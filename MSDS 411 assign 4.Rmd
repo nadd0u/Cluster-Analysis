@@ -1,0 +1,716 @@
+---
+title: 'Cluster Analysis'
+author: "Nadia Noui-Mehidi"
+date: "11/5/2019"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+employment <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/EuropeanEmployment.csv",head=TRUE,sep=",")
+recidivism <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/recidivism.csv",head=TRUE,sep=",")
+states <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/USStates.csv",head=TRUE,sep=",")
+library(NbClust)
+library(dplyr)
+library(skimr)
+library(cluster)
+require(tidyverse)
+library(kohonen)
+require(ggplot2)
+require(ggridges)
+require(RColorBrewer)
+library(vegan)
+require(useful)
+require(Hmisc)
+library(HSAUR)
+library(MVA)
+library(HSAUR2)
+library(fpc)
+library(mclust)
+library(lattice)
+library(car)
+library(cluster)
+require(maptree)
+library(factoextra)
+library(data.table)
+library(formattable)
+library(tidyr)
+```
+
+
+
+# European Employment Data 
+The European Employment data are the percentage employed in different industries in Europe countries during 1979. We will be analyzing it to gain insight into patterns of employment (if any) amongst European countries. All of the 30 countries belong to one of three EU groups – EU for the European Union, EFTA for the European Free Trade Association, Eastern for the Eastern European nations and other. Other consists of four countries – Cyprus, Gibraltar, Malta and Turkey which we could think of as the Mediterranean region.
+
+```{r cars}
+print(employment)
+```
+
+
+##(1)	Initial Exploratory Data Analysis:  
+When we have multivariate data, the scatterplot of each pair of variables can be used as the basis of an initial examination of the the data for informal evidence of cluster structure. Using the pairs plot below to scan the individual 2-dimensional views of the data we see that some industries move together. Agriculture has negative correlation with Service, Construction, and Manufacturing industries. Transport, manufacturing and construction are also correlated 
+
+```{r}
+#Pairwise Scatterplot
+
+pairs(employment[,-c(1,2)])
+```
+
+
+##(2)	Visualizing the Data with Labelled Scatterplots:  
+While the pairs plot allows us to scan all pairwise scatterplots, it is not the ideal visualization of the data.  After we have honed in on some interesting dimensions we can create more specialized plots for those dimensions to see whether they reveal any clusters. 
+
+### Scatterplot of Financial versus Service Industries.  
+It looks like the EFTA and EU countries are close together and tend towards the top right of the graph, with participation in service and financial industries. The countries that fall into the "Eastern" and "other" categories are grouped to the bottom left of the graph indicating lower participation in service and financial industries . Albania stands out as an outlier. 
+
+```{r}
+ggplot(employment, aes(x=SER, y=FIN, colour = Group, label= Country)) +geom_point() + geom_text(aes(label=Country),hjust=0, vjust=0) +ggtitle("Scatter Plot Financial vs Services") +theme(plot.title=element_text(lineheight=0.8, face="bold", hjust=0.5))
+```
+
+### Scatterplot of Manufacturing versus Service Industries.
+  
+It looks like there is one cluster in the center of the graph made up of the EU and EFTA countries. The countries that fall into the "Eastern" and "other" categories are randomly scattered around the graph and exhibit no clustering pattern. 
+
+```{r}
+ggplot(employment, aes(x=MAN, y=FIN, colour = Group, label= Country)) +geom_point() + geom_text(aes(label=Country),hjust=0, vjust=0) +ggtitle("Scatter Plot Financial vs Manufacturing") +theme(plot.title=element_text(lineheight=0.8, face="bold", hjust=0.5))
+```
+
+The scatterplot of Financial versus Service Industries gave us a better view of the way the countries cluster, while there arent four distinct clusters, we have two distinct clusters. The EFTA and EU countries are well differenciated from the Other and Eastern countries when it comes to Service and FInancial industry participation. 
+
+
+## 3.	Projecting our Data in a 2d Coordinate System Using Principal Components Analysis
+Scatterplots may be more useful after the data has been projected onto a two dimensional coordinate system in a way that preserves their multivariate structure as fully of possible. 
+
+### PCA on Raw Data
+A scatterplot of our data plotted on a coordinate system made up of the first 2 principal components is below. The EU and EFTA countries have formed a tighter cluster than before. The countries that are grouped in the Eastern and "oter" categories are still randomly dispersed on the coordinate system. Albania is still a clear outlier. Its interesting that EU and EFTA are consistently forming a cluster, maybe countries with trade agreements have similar industry composition. 
+
+```{r}
+apply(employment[,-c(1,2)],MARGIN=1,FUN=sum)
+pca.out <- princomp(x=employment[,-c(1,2)],cor=FALSE);
+names(pca.out)
+
+pc.1 <- pca.out$scores[,1];
+pc.2 <- pca.out$scores[,2];
+str(pc.1)
+pcdf = data.frame(pc1=pc.1, pc2=pc.2)
+pcdf1 = cbind(pcdf,employment$Country)
+pcdf2 = cbind(pcdf1,employment$Group)
+str(pcdf2)
+
+ggplot(pcdf2, aes(x=pc1, y=pc2, colour = employment$Group, label= employment$Country)) + 
+  geom_point() + geom_text(aes(label=employment$Country),hjust=0, vjust=0) +
+  ggtitle("Scatter Plot PC1 vs PC2") +
+  theme(plot.title=element_text(lineheight=0.8, face="bold", hjust=0.5))
+```
+
+### PCA with scaled data
+Usually we want to scale our data before we use a principal component analysis. In this case, since the variables are composite, and are all measured using the same units we dont need to scale the data ahead of time. Nonetheless, we will try scaling the data before using PCA to see if that makes a differen in our cluster patterns.
+In the scatterplot below, the cluster patterns are not much different than the unscaled version. We still have one tight cluster made up of the EU and EFTA countries.
+```{r}
+e<-employment[,-c(1,2)]
+employment.scaled <- scale(e)
+apply(employment.scaled[,-c(1,2)],MARGIN=1,FUN=sum)
+pca <- princomp(x=employment.scaled[,-c(1,2)],cor=FALSE);
+names(pca)
+
+pc.1 <- pca$scores[,1];
+pc.2 <- pca$scores[,2];
+str(pc.1)
+pcdf = data.frame(pc1=pc.1, pc2=pc.2)
+pcdf1 = cbind(pcdf,employment$Country)
+pcdf2 = cbind(pcdf1,employment$Group)
+str(pcdf2)
+
+ggplot(pcdf2, aes(x=pc1, y=pc2, colour = employment$Group, label= employment$Country)) + 
+  geom_point() + geom_text(aes(label=employment$Country),hjust=0, vjust=0) +
+  ggtitle("Scatter Plot PC1 vs PC2") +
+  theme(plot.title=element_text(lineheight=0.8, face="bold", hjust=0.5))
+```
+
+##(4)	Hierarchical Clustering Analysis
+
+In agglomerative hierarchical clustering, each observation starts as its own cluster. Clusters are then combined (two at a time) until all clusters are merged into a single cluster. Clusters are combined based on their proximity to one another; we will use Complete Linkage and Euclidian Distance to measure this proximity. Complete linkage clustering, measures the longest distance between a point in one cluster and a point in the other cluster. Because these variables all use the same units we do not standardize the data before calculating Euclidian distances and performing the complete linkage clustering. We visualize our hierarchic classifications using a dendrogram, which illustrates how items are combined into clusters. The dendogram helps us understand which countries are similar or different with regard to their Industry composition.
+
+In the dendogram below, our countries for the most part tend to cluster in a way that aligns with their EU groups. Eastern European countries look like they tend to be together, members of the EU seems to be grouped together, EFTA looks like its in its own cluster (Far right). Malta and Gibraltar look like outliers, theyre both small islands and probably dont have the diversity of economy to naturally fall into any of the clusters.
+
+```{r}
+hier.dist = dist(employment[,-c(1,2)])
+
+hclustmodel <- hclust(hier.dist, method = 'complete')
+plot(hclustmodel,labels=employment$Country)
+```
+
+#### Hierarchical Cluster Analysis: 3 clusters
+
+Now we use the cutree() function to force an assignment of the observations to 3 clusters. The dendrogram is replotted, and the rect.hclust() function is used to superimpose the three-cluster solution. The results are displayed below. Our 3-cluster cut off results in one main cluster containing all the countries and then two clusters, one for each of the two outlier countries (Albania and Gilbraltar). Complete linkage clustering is sensitive to outliers so to improve our cluster results we could either remove the outliers or try again with more clusters.
+
+```{r}
+plot(hclustmodel,labels=employment$Country)
+rect.hclust(hclustmodel,k=3,border = 2:5)
+```
+
+To get an idea of the classification accuracy of our clusters we create a table showing us how the EU group members are grouped by our solution. The rows denote the cluster solution and the columns denote the EU group. All of our groups are most heavily loaded to cluster 1 while a couple countries are clustered into 2 and 3. We may need to use more clusters to break up cluster 1. 
+
+```{r}
+
+# choose the number of clusters k = 3
+cut.3 <- cutree(hclustmodel, k=3)
+edata<-cbind.data.frame(employment,cut.3)
+edata
+table(edata$Group, edata$cut.3)
+
+```
+
+#### Hierarchical Cluster Analysis: 6 clusters
+
+We use the cutree() function to force an assignment of the observations to 6 clusters. The dendrogram is replotted, and the rect.hclust() function is used to superimpose the six-cluster solution. At a cut off of 6, our clusters more closely align with the groupings in our original dataset. Eastern Europe is confined to cluster 4, cluster 5 looks like its made up of southern and mid europe, the last one is northern europe (with a few exceptions malta gibralter). Albania looks like an outlier in all our graphs so it makes sense that it makes its own cluster. Turkey is also its own cluster. 
+
+```{r}
+plot(hclustmodel,labels=employment$Country)
+rect.hclust(hclustmodel,k=6, border = 2:5)
+```
+
+We compare our clusters with our EU group variable in the table below. The rows denote the cluster solution and the columns denote the EU group. Eastern European countries dominate the fourth cluster, EU and EFTA make up cluster two, and the Other group is dispered among the 5 clusters. The six cluster solution has done a better job of bundeling observations according to their group membership but we havent achieved perfect classification accuracy. 
+
+```{r}
+# k = 6
+cut.6 <- cutree(hclustmodel, k=6)
+edataa<-cbind.data.frame(employment,cut.6)
+
+
+ct.km <- table(employment$Group, edataa$cut.6)
+ct.km
+
+```
+
+#### Visualizing Hierarchical Cluster Analysis in Principal Component Space
+To visualize our Hierarchical Clusters in one plot we use our Principal Component coordinate system. The resulting scatterplot for the 3 and 6 cluster solutions are below.
+
+
+```{r}
+pcdf3 <- cbind(pcdf2, cluster = as.factor(cut.3))
+ggplot(pcdf3,aes(pc1,pc2))+ geom_point(aes(color = cluster), size=3)
+
+pcdf6 <- cbind(pcdf2,cluster = as.factor(cut.6))
+ggplot(pcdf6,aes(pc1,pc2))+ geom_point(aes(color = cluster),size=3)
+
+```
+For our 3 cluster solution, it looks like cluster 1 has started to form a real cluster in our PCA space. Its not as tightly clustered as we would like which tell us that the first 2 principal components only partially explains the first cluster. The other 2 clusters are not captured by the principal components. Our 6 cluster solution does not look any better in PCA space. Cluster 2 is densely clustered in the PC1/PC2 coordinate system, the others are randomly dispersed. 
+
+
+### Evaluation of our Hierarchical Cluster Analysis
+We evaluate our clusters using both internal measures focusing on the cluster properties, and external measures which measures clusters classification accuracy (as compared to the EU group variable).
+
+#### Internal Cluster Evaluation
+
+The goal of clustering algorithms is to split the dataset into clusters of objects, such that they are:
+
+*+* Compact: objects in the same cluster are similar as much as possible (small average distance within clusters)
+*+* Seperate: objects in different clusters are highly distinct (large average distance between clusters)
+
+We use the Dunn Index to measure compactness and Silhuette Analysis to measure seperation. 
+
+##### Dunn Index
+
+The Dunn Index divides the distance of objects between clusters by the distance of objects within clusters (diameter). If the data set contains compact and well-separated clusters, the diameter of the clusters is expected to be small and the distance between the clusters is expected to be large. Our Dunn Indeces tell us that our three cluster model consists of more compact and well seperated clusters than our six cluster model. 
+
+```{r}
+c3 <- eclust(employment[,-c(1,2)], "kmeans", k = 3,
+                 nstart = 25, graph = FALSE)
+c6 <- eclust(employment[,-c(1,2)], "kmeans", k = 6,
+                 nstart = 25, graph = FALSE)
+dunn3 <- cluster.stats(hier.dist,  c3$cluster)
+dunn6 <- cluster.stats(hier.dist,  c6$cluster)
+#dunn3$dunn
+#dunn6$dunn
+dunn <- matrix(c(0.5079199,0.2282364), ncol=2)
+rownames(dunn) <- c('Dunn Index')
+colnames(dunn) <- c('Heirarchical 3', 'Heirarchical 6')
+dunn.table <- as.table(dunn)
+formattable(dunn.table)
+```
+
+##### Silhuette Analysis
+
+Silhouette analysis measures how well an observation is clustered and it estimates the average distance between clusters. The silhouette plot displays a measure of how close each point in one cluster is to points in the neighboring clusters. Our three cluster solution has the larger average distance between clusters and therefore has better more seperated clusters than our six cluster solution.
+
+
+```{r}
+# Silhouette coefficient of observations
+sil3 <- silhouette(cut.3, dist(employment))
+sil6 <- silhouette(cut.6, dist(employment))
+# Silhouette plot
+fviz_silhouette(sil3)
+fviz_silhouette(sil6)
+```
+
+
+
+####External Cluster Evaluation
+External Cluster Evaluation measures are calculated by matching the structure of our cluster solutions with the clusters formed by our EU group label. We the corrected Rand index assess the similarity of the these two clustering structures.
+
+#####Rand Index  
+The Rand Index compares our predetermined country groupings to our cluster results and tries to find the ratio of matching and unmatched observations among the two cluster structures. It has a value between 0 and 1. The higher the value, better the score. Given the dendogram and cross tables we looked at previously, Im surpised that our three cluster solution has achieved a higher classification accuracy than our six cluster solution. 
+
+```{r}
+# Compute cluster stats
+group <- as.numeric(employment$Group)
+stats3 <- cluster.stats(d = dist(employment), 
+                             group, cut.6)
+stats6 <- cluster.stats(d = dist(employment), 
+                             group, cut.3)
+#K=3
+#stats3$corrected.rand
+#stats3$vi
+#K=6
+#stats6$corrected.rand
+stats6$vi
+external <- matrix(c(0.2946571, 0.06355715), ncol=2)
+rownames(external) <- c('Rand Index')
+colnames(external) <- c('Heirarchical 3', 'Heirarchical 6')
+external.table <- as.table(external)
+formattable(external.table)
+```
+
+
+##(5)	k-Means Clustering Analysis  
+The k-means algorithm is another method to cluster data. This technique partitions the data set into unique homogeneous clusters whose observations are similar to each other but different than other clusters.
+
+### K-Means Cluster Analysis where K=3
+Unlike hierarchical clustering, k-means clustering requires that you specify in advance the number of clusters to extract. We begin with an analysis that uses K=3 clusters. Our solution gives us K-means clustering with 3 clusters of sizes 20, 7, 3. Like with our 3 cluster heirarchical model, most membership is mainly in cluster 1.  
+
+```{r}
+# kmeans clustering with k=3 clusters
+clusterresults <- kmeans(employment[,-c(1,2)],3)
+clusterresults
+```
+
+We can compare the differences in means for our clusters among all variables to start to identify the attributes of our groups. 
+
+Countries in Cluster 1 have: 
+*+* highest percentage employed in Agriculture and Mining
+*+* lowest percentage employed in Manufacturing, Service, Power Supply Industries, Construction, and Social and Personal services 
+Countries in this cluster are probably not as industrial, they probably have a lot of land space.
+
+Countries in Cluster 2: 
+*+* highest percentage employed of all other clusters in Manufacturing, Power Supply Industries, Transport and Communications
+*+* lowest percentage employed in Finance
+
+
+Countries in Cluster 3: 
+*+* highest percentage employed of all other clusters in Construction, Service, Finance, and Social and Personal services
+*+* lowest percentage employed in Agriculture and Mining
+Countries in this cluster may have a lot of tourism, maybe a lot of major cities.
+
+
+The within cluster sum of squares by cluster (52.1 %) tells us the total variance in our data that is explained by the clustering. Assigning our observations to 3 clusters achieved a reduction in sums of squares of 52.1 %.
+
+ 
+We look at a cross-tabulation of country group (EU, EFTA, Easter, Other) and country cluster membership to get an idea for how well k-means clustering uncovered the actual structure of the data contained in the group variable. 
+
+```{r}
+ct.km <- table(employment$Group, clusterresults$cluster)
+ct.km
+```
+It looks like all the groups are combined into cluster 1 with the exception of Eastern which is mostly in cluster 2. We need more clusters to break up EFTA and the EU but from the results of our heirarchical analysis it seems like the trade agreement countries (EU/EFTA) have industry compositions that are more similar to one another, than the within group variation of the other groups. The EU group labels may not be an appropriate framework for understanding the differences in industry compisition of European countries. 
+
+### K-Means Cluster Analysis where k=6
+We use K-means cluster analysis to partition our data into 6 clusters. Our solution gives us K-means clustering with 6 clusters of sizes 8, 9, 2, 4, 5, 2. 
+
+```{r}
+# kmeans clustering with k=6 clusters
+cluster6 <- kmeans(employment[,-c(1,2)],6)
+cluster6
+```
+
+
+#### K-Means Clusters plotted in PCA Space
+We plot our multivariate data on a 2 dimensional plot using Principal Component Analysis with axis made up of the first two principal components. This plot allows us to picture the size and shape of the clusters, as well as their relative position. Objects belonging to diferent clusters are plotted with diferent characters and shaded in different colors. The axis have information about what percent of variation is explain by each dimension. 
+For both our K=3 and K=6 solutions plot only 54.68% of the point variability is explained by the first two principal components. These plots are not exactly a faithful representation of the four-dimensional data. The k-means clustering for k = 6 is displayed in the left plot, the clusters in this plot are much more compact than the k-means clustering for k=6 (right) indicate that the six cluster solution is preferable to the three cluster solution. You will see the clusters merged in the principal plane when clustering is unsuccessful. This would add some insight into our low outcome of just 54.68%, since the clusters are close together and overlapping.
+
+```{r}
+
+library(cowplot)
+kmean_calc <- function(df, ...){
+  kmeans(df, scaled = ..., nstart = 30)
+}
+# cluster plots for kmeans
+
+km3 <- kmean_calc(employment[,-c(1,2)], 3)
+p2 <- fviz_cluster(km3, data = employment[,-c(1,2)], ellipse.type = "convex") + theme_minimal() + ggtitle("k = 3")
+
+km6 <- kmeans(employment[,-c(1,2)], 6)
+p6 <- fviz_cluster(km6, data = employment[,-c(1,2)], ellipse.type = "convex") + theme_minimal() + ggtitle("k = 6")
+plot_grid(p2, p6, labels = c("k3", "k6"))
+
+```
+
+### Evaluation of cluster analysis
+We compare our 3 cluster and 6 cluster solutions  with internal measures that focus on the cluster properties, and external measures which compares our clusters to our labels (the group variable).
+#### Internal Cluster Evaluation
+We use the Dunn Index to measure compactness and Silhuette Analysis to measure seperation. 
+##### Dunn Index
+
+When we compare our two cluster solutions our three cluster model has the higher dunn test and therefore consists of more compact and well seperated clusters. 
+
+```{r}
+c3 <- eclust(employment[,-c(1,2)], "kmeans", k = 3,
+                 nstart = 25, graph = FALSE)
+c6 <- eclust(employment[,-c(1,2)], "kmeans", k = 6,
+                 nstart = 25, graph = FALSE)
+dunn3 <- cluster.stats(hier.dist,  c3$cluster)
+dunn6 <- cluster.stats(hier.dist,  c6$cluster)
+#dunn3$dunn
+#dunn6$dunn
+dunn <- matrix(c(0.5079199,0.2282364), ncol=2)
+rownames(dunn) <- c('Dunn Index')
+colnames(dunn) <- c('Heirarchical 3', 'Heirarchical 6')
+dunn.table <- as.table(dunn)
+formattable(dunn.table)
+```
+
+##### Silhuette Analysis
+Silhouette analysis measures how well an observation is clustered and it estimates the average distance between clusters. Our three cluster solution has the larger average distance between clusters and therefore has better more seperated clusters. 
+
+
+```{r}
+# Silhouette coefficient of observations
+sil3 <- silhouette(cut.3, dist(employment))
+sil6 <- silhouette(cut.6, dist(employment))
+# Silhouette plot
+fviz_silhouette(sil3)
+fviz_silhouette(sil6)
+```
+
+
+#### External Cluster Evaluation
+External Cluster Evaluation measures are calculated by matching the structure of the clusters with our pre-defined classification of objects , in our case the countries groupings (EU, EFTA, Eastern, Other). 
+
+##### Rand Index  
+Using the Rand Index we compare all four of our clustering solutions. Agreement between the EU groups and the cluster solution is highest for the Heirarchical Clustering Method using 3 clusters. Between the K-means solutions, the K=3 solution performed better than the K=6 solution. This is not to say the 3 cluster heirarchical or k means solutions are good. I think we need to rethink the framework we are using to understand the differences between these countries. Their industries dont seem to cluster by the groups provided by the data.
+```{r}
+# Compute cluster stats
+group <- as.numeric(employment$Group)
+clust_stats3 <- cluster.stats(d = dist(employment), 
+                             group, clusterresults$cluster)
+clust_stats6 <- cluster.stats(d = dist(employment), 
+                             group, cluster6$cluster)
+#K=3
+#clust_stats3$corrected.rand
+#K=6
+#clust_stats6$corrected.rand
+
+#heirarchical
+#K=3
+#stats3$corrected.rand
+#K=6
+stats6$corrected.rand
+
+trial <- matrix(c(0.2946571,0.06355715,0.272645,0.1864293), ncol=4)
+rownames(trial) <- c('Rand Index')
+colnames(trial) <- c('Heirarchical 3', 'Heirarchical 6', 'K-Means 3', 'K-Means 6')
+trial.table <- as.table(trial)
+formattable(trial.table)
+
+```
+
+
+
+## 6.	Optimal Number of Clusters  
+
+There are a number of indices for determining the best number of clusters in a cluster analysis. Below are graphs showing the optimal solution using:
+
+*+* Total Sum of Square Method: to check for in-cluster similarity, the 
+*+* Average silhouette Width Method: which gives how well separated the clusters are
+*+* Gap Statistic Method: compares the total within intra-cluster variation for different values of k with their expected values under null reference distribution of the data
+
+```{r}
+e<-employment[,-c(1,2)]
+#nc <- NbClust(e, distance="euclidean",
+                  #min.nc=2, max.nc=20, method="complete")
+#nc
+# Elbow method
+fviz_nbclust(e, kmeans, method = "wss") +
+    geom_vline(xintercept = 4, linetype = 2)+
+  labs(subtitle = "Elbow method")
+
+# Silhouette method
+fviz_nbclust(e, kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+
+# Gap statistic
+# nboot = 50 to keep the function speedy. 
+# recommended value: nboot= 500 for your analysis.
+# Use verbose = FALSE to hide computing progression.
+set.seed(123)
+fviz_nbclust(e, kmeans, nstart = 25,  method = "gap_stat", nboot = 50)+
+  labs(subtitle = "Gap statistic method")
+```
+
+
+# 7. USSTATES: Hierarchical Cluster Analysis
+The USSTATES dataset is a 12 variable dataset with 50 records representing the US States. Each row includes a group variable for region that we can use as our framework for understanding how states could be grouped. There are 2 continuous variables: population and household income. The remaining variables are state-wide average or proportion scores for various demographic  variables.  As such, higher scores for the composite variables translate into having more of that quality. 
+
+```{r}
+print(states)
+```
+
+Were going to focus on the composite variables and so we create a new dataframe only containing those variables. Since the composite variables are all measured in the same units we do not need to scale our variables. 
+
+
+### Heirarchical Clustering
+We measure the dissimilarity of observations using Euclidean distance and then use complete linkage clustering to produce our clusters. In the dendogram below, the Southern states look like theyre close to one another forming one cluster, so do the Western states. The Midwest and Eastern states seem to be similar to one other. Hawaii and Utah are outliers.
+```{r}
+hier.distt = dist(scale(states[,-c(1,2,3,4)]))
+require(maptree)
+statesmodel <- hclust(hier.distt, method = 'complete')
+plot(statesmodel,labels=states$State)
+```
+### How many clusters to use 
+
+Its not clear from the dendogram where to cut our clusters so we use the elbow method. The elbow method looks at the percentage of variance explained as a function of the number of clusters. We choose a number of clusters so that adding another cluster doesn’t give much better modeling of the data. We want to choose the point where the marginal gain will drop, giving an angle in the graph. We will use three clusters.
+
+```{r}
+subdat <- states[,-c(1,2,3,4)]
+wssplot <- function(subdat, nc=15, seed=1234) {
+  wss <- (nrow(subdat)-1)*sum(apply(subdat,2,var))
+  for (i in 2:nc) {
+    require(fpc)
+    set.seed(seed)
+    hier.dist <- dist(subdat)
+    complete3 <- cutree(hclust(hier.dist),i)
+  wss[i] <- cluster.stats(hier.dist,complete3, alt.clustering=NULL)$within.cluster.ss}
+  rs <- (wss[1] - wss)/wss[1]
+    plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")
+    plot(1:nc, rs, type="b", xlab="Number of Clusters",
+         ylab="% of Between SS")
+    return(wss)}
+
+wssplot(subdat)
+```
+### Hierarchical Clustering with 3 clusters
+ 
+```{r}
+plot(statesmodel,labels=states$State)
+rect.hclust(statesmodel,k=3, border = 2:5)
+```
+
+```{r}
+# choose the number of clusters k = 5
+cut3 <- cutree(statesmodel, k=3)
+s<-cbind.data.frame(states,cut3)
+
+
+ct.km <- table(states$Region, s$cut3)
+ct.km
+
+```
+Southern states have formed their own cluster while the other states are grouped into cluster 2. Hawaii our outlier forms its own cluster, cluster 3. We will try again with more clusters. 
+
+### Hierarchical Clustering with 5 Clusters
+```{r}
+plot(statesmodel,labels=states$State)
+rect.hclust(statesmodel,k=5, border = 2:5)
+```
+
+```{r}
+# choose the number of clusters k = 5
+cut5 <- cutree(statesmodel, k=5)
+s<-cbind.data.frame(states,cut5)
+
+
+ct.km <- table(states$Region, s$cut5)
+ct.km
+
+```
+
+Cluster 1: Southern States
+Cluster 2: Western States
+Cluster 3: MW NE states
+Clusters 4: outlier
+Cluster 5: outlier
+
+We have succesfully created sepearate clusters for the Southern and Wester States but we have two clusters that only hold one state and our MW and NE regions are still combined in cluster 3. 
+
+#### Visualizing our Hierarchical Clusters in Principal Component Space
+We visualize our high dimensional data in one plot using Principal Component Analysis. Our plot shows three very loose overlapping clusters. Cluster 1 is high on the map, cluster 2 is in the middle, cluster 4 is low. Clusters 3 and 5 show no pattern.
+```{r}
+apply(states[,-c(1,2)],MARGIN=1,FUN=sum)
+pca.outt <- princomp(x=states[,-c(1,2)],cor=FALSE);
+
+
+pc.1 <- pca.outt$scores[,1];
+pc.2 <- pca.outt$scores[,2];
+
+pcdff = data.frame(pc1=pc.1, pc2=pc.2)
+pcdff1 = cbind(pcdff,states$State)
+pcdff2 = cbind(pcdff1,states$Region)
+
+
+pcdff3 <- cbind(pcdff2,cluster = as.factor(cut5))
+ggplot(pcdff3,aes(pc1,pc2))+ geom_point(aes(color = cluster), size=3)
+
+```
+
+### Evaluation of our Hierarchical Cluster Analysis
+We evaluate our clusters with internal measures that focus on the cluster properties, and external measures which compares our clusters to our region variable.
+
+####Internal Cluster Evaluation
+
+We use the Dunn Index to measure compactness and Silhuette Analysis to measure seperation. 
+
+##### Compactness: Dunn Index
+ Our Dunn index is pretty low, as we saw in out PCA graph, the clusters are not very tight and compact. 
+
+```{r}
+
+c6 <- eclust(subdat, "kmeans", k = 5,
+                 nstart = 25, graph = FALSE)
+
+
+dunn6 <- cluster.stats(hier.distt,  c6$cluster)
+
+dunn6$dunn
+dunn <- matrix(c(0.212174), ncol=1)
+rownames(dunn) <- c('Dunn Index')
+colnames(dunn) <- c('Heirarchical 5')
+dunn.table <- as.table(dunn)
+formattable(dunn.table)
+```
+
+##### Seperateness: Silhuette Analysis
+Our average silhuette width is low between clusters. Objects with a low silhouette value are considered poorly clustered. 
+
+
+```{r}
+# Silhouette coefficient of observations
+sil5 <- silhouette(cut5, hier.distt)
+# Silhouette plot
+fviz_silhouette(sil5)
+
+```
+#### External Cluster Evaluation
+External Cluster Evaluation measures are calculated by matching the structure of the clusters with our region labels. 
+
+##### Rand Index  
+ 
+Agreement between the groups and the cluster solution is 0.2396616 for the Heirarchial Clustering Method using 5 clusters. This is a low score. 
+```{r}
+# Compute cluster stats
+group <- as.numeric(states$Region)
+clust <- cluster.stats(d = hier.distt, 
+                             group, c6$cluster)
+
+#K=3
+#clust$corrected.rand
+#K=6
+#clust_stats6$corrected.rand
+
+#heirarchical
+#K=3
+#stats3$corrected.rand
+#K=6
+
+
+trial <- matrix(c(0.2396616), ncol=1)
+rownames(trial) <- c('Rand Index')
+colnames(trial) <- c('Heirarchical 5')
+trial.table <- as.table(trial)
+formattable(trial.table)
+
+```
+
+# 8. RECIDIVISM: PAM Cluster Analysis  
+The recidivism dataset is an 18 variable dataset with 1445 records.  The data is a random sample of convicts released from prison between July 1, 1977 and June 30, 1978. The information was collected retrospectively by looking at records in April 1984, so the maximum possible length of observation is 81 months. 
+
+```{r}
+head(recidivism)
+```
+
+The variables are a mix of binary variables and continuous variables. Since K-Means uses centroids (a vector of variable means) and Euclidean distance to measure proximity, it requires that all variables be continuous. Partitioning around medoids (PAM) unlike K-means can be based on any distance measure and can therefore accommodate mixed data types and isn’t limited to continuous variables. With PAM, rather than representing each cluster using a centroid, each cluster is identified by its most representative observation
+
+### Distance Measure
+In order for a clustering algorithm to yield sensible results, we have to use a distance metric that can handle mixed data types. In this case, we will use something called Gower distance. For each variable type, the distance metric that works well for that type is used and scaled to fall between 0 and 1. Our quantitative variables use a range-normalized Manhattan distance. Our binary variables use a Dice coefficient.
+```{r}
+r<-recidivism[,-c(18)]
+dist <- daisy(r,
+                    metric = "gower",
+                    type = list(logratio = 3))
+summary(dist)
+```
+
+### Selecting the number of clusters 
+We use silhouette width, an internal validation metric which measures how similar an observation is to its own cluster compared its closest neighboring cluster. The metric can range from -1 to 1, where higher values are better. After calculating silhouette width for clusters ranging from 2 to 10 for the PAM algorithm, we see that 7 clusters yields the highest value.
+```{r}
+sil_width <- c(NA)
+
+for(i in 2:10){
+  
+  pam_fit <- pam(dist,
+                 diss = TRUE,
+                 k = i)
+  
+  sil_width[i] <- pam_fit$silinfo$avg.width
+  
+}
+
+# Plot sihouette width (higher is better)
+
+plot(1:10, sil_width,
+     xlab = "Number of clusters",
+     ylab = "Silhouette Width")
+lines(1:10, sil_width)
+```
+### Cluster Interpretation
+After running the algorithm and selecting seven clusters, we can interpret the clusters by running summary on each cluster. Based on these results:
+
+*+* All the clusters have similar levels of education, age, drug use and alcohol use 
+*+* There was a lot of variation between clusters when it came to time served and duration
+*+* Cluster 1 is  blacker and more married 
+*+* Cluster 4 is blacker and higher felony
+*+* Clusters 6 and 7 have high priors 
+
+
+
+
+
+```{r, include=FALSE}
+
+pam_fit <- pam(dist, diss = TRUE, k = 7)
+
+pam_results <- r %>%
+  mutate(cluster = pam_fit$clustering) %>%
+  group_by(cluster) %>%
+  do(the_summary = summary(.))
+
+pam_results$the_summary
+```
+
+### Visualization
+One way to visualize many variables in a lower dimensional space is with t-distributed stochastic neighborhood embedding, or t-SNE. This method is a dimension reduction technique that tries to preserve local structure so as to make clusters visible in a 2D or 3D visualization.  In this case, the plot shows that PAM was able to detect a couple decently seperated but not very compact clusters.
+
+```{r, include=FALSE}
+library(Rtsne)
+tsne_obj <- Rtsne(dist, is_distance = TRUE)
+
+tsne_data <- tsne_obj$Y %>%
+  data.frame() %>%
+  setNames(c("X", "Y")) %>%
+  mutate(cluster = factor(pam_fit$clustering))
+
+ggplot(aes(x = X, y = Y), data = tsne_data) +
+  geom_point(aes(color = cluster))
+```
+
+
+
+
+## 9.	Reflection
+I think I need to get more comfortable evaluating and adjusting the cluster algorithms. I often got poor results but was unsure about how to proceed. I was also confused about why the Rand index never matched the classification accuracy in my cross tables. When it came to interpretation I found using K-means clustering on the European to be the easiest and the PAM clustering on recidivism to be the most difficult. The recidivism data was also hard to use because there was no variable that served as a label so it felt very vague, its hard not to be able to rely on some assumptions about the data. 
+
+
+
+
