@@ -1,0 +1,85 @@
+---
+title: "Cluster Analysis"
+author: "Nadia Noui-Mehidi"
+date: "7/15/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+college <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/college_acceptance.csv",head=TRUE,sep=",")
+
+recidivism <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/recidivism.csv",head=TRUE,sep=",")
+library(dplyr)
+library(skimr)
+library(cluster)
+require(tidyverse)
+library(kohonen)
+require(ggplot2)
+require(ggridges)
+require(RColorBrewer)
+library(ggplot2)
+library(vegan)
+
+```
+
+#COMPONENT 1:    Multidimensional Scaling
+##1. EDA
+The recidivism dataset is an 18 variable dataset with 1445 records.  The data is a random sample of convicts released from prison between July 1, 1977 and June 30, 1978. The information was collected retrospectively by looking at records in April 1984, so the maximum possible length of observation is 81 months. 
+
+The 18 variables including in our data set are:
+ 1. black =1 if black
+ 2. alcohol =1 if alcohol problems
+ 3. drugs =1 if drug history
+ 4. supervised =1 if release supervised
+ 5. married =1 if married when incarc.
+ 6. felony =1 if felony sentence
+ 7. workprg =1 if in N.C. pris. work prg.
+ 8. property =1 if property crime
+ 9. person =1 if crime against person
+10. nbr_piors # prior convictions
+11. education years of schooling
+12. nbr_rules # rules violations in prison
+13. age in months
+14. time_served time served, rounded to months
+15. follow_up length follow period, months
+16. duration max(time until return, follow)
+17. censored =1 if duration right censored
+18. log_duration log(duration)
+
+
+```{r}
+glimpse(recidivism)
+```
+There are 9 binary, 8 interval and 1 continuous variable in our dataset. We normally dont want to include categorical variables when multidemenisional scaling but since our categorical variables are binary their distance measures are still meaningful and we can keep them in. 
+
+Of interest to us is the time until they return to prison (duration variable), so with this in mind, we will keep the following variables:  
+duration:months until return to prison
+censored:censoring indicator variable
+workprg: indicator of participation in a work program
+nbr_priors: the number of previous convictions 
+time_served: the time served rounded to months 
+felony: an indicator of felony sentences
+alcohol: an indicator of alcohol problems
+drugs: an indicator of drug use history
+black: an indicator for African Americans 
+married: an indicator if married when incarcerated 
+education: the number of years of schooling 
+age: in months.
+
+We created a new dataframe with only the variables we are using. Since our variables have different scales, we also standardize the records so that all variables have an equal opportunity to influence the patterns.
+
+```{r}
+df = subset(recidivism, select = -c(super, property, person, rules, follow, ldurat))
+```
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
