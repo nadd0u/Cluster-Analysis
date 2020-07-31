@@ -1,18 +1,18 @@
 ---
-title: 'Cluster Analysis'
+title: "Cluster Analysis"
 author: "Nadia Noui-Mehidi"
-output: github_document
-
+output:
+  github_document: default
+  rmarkdown::github_documen: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+#knitr::opts_chunk$set(echo = TRUE)
 
 library(wooldridge)
 data('recid')
 
 
-install.packages("rmarkdown")
 #states <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/USStates.csv",head=TRUE,sep=",")
 library(NbClust)
 library(dplyr)
