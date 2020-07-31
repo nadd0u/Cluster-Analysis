@@ -1,7 +1,6 @@
 ---
 title: 'Cluster Analysis'
 author: "Nadia Noui-Mehidi"
-date: "11/5/2019"
 output: rmarkdown::github_document
 
 ---
