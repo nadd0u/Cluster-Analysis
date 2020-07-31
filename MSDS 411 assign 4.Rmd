@@ -43,9 +43,12 @@ library(tidyr)
 ```
 
 
+In this project I perform an exploratory data analysis for three different clustering problems. 
+
+
 
 # European Employment Data 
-The European Employment data are the percentage employed in different industries in Europe countries during 1979. We will be analyzing it to gain insight into patterns of employment (if any) amongst European countries. All of the 30 countries belong to one of three EU groups – EU for the European Union, EFTA for the European Free Trade Association, Eastern for the Eastern European nations and other. Other consists of four countries – Cyprus, Gibraltar, Malta and Turkey which we could think of as the Mediterranean region.
+The first section of this project focuses on the European Employment dataset, a datsetset showing the percentage employed in different industries in Europe countries during 1979. I use multivariate techniques, such as cluster analysis and principal components analysis to gain insight into patterns of employment (if any) amongst European countries. All of the 30 countries in the dataset belong to one of three EU groups – EU for the European Union, EFTA for the European Free Trade Association, Eastern for the Eastern European nations and other. Other consists of four countries – Cyprus, Gibraltar, Malta and Turkey which we could think of as the Mediterranean region.
 
 ```{r}
 #"/Users/nadianoui-mehidi/Cluster-Analysis"
@@ -467,6 +470,8 @@ fviz_nbclust(e, kmeans, nstart = 25,  method = "gap_stat", nboot = 50)+
 
 
 #  USSTATES: Hierarchical Cluster Analysis
+The second part of this project uses the USSTATES dataset. The data, calculated from census data, consists of state-wide average or proportion scores for the non-demographic variables. I use this data set to conduct a hierarchical cluster analysis.
+
 The USSTATES dataset is a 12 variable dataset with 50 records representing the US States. Each row includes a group variable for region that we can use as our framework for understanding how states could be grouped. There are 2 continuous variables: population and household income. The remaining variables are state-wide average or proportion scores for various demographic  variables.  As such, higher scores for the composite variables translate into having more of that quality. 
 
 ```{r}
@@ -645,6 +650,8 @@ formattable(trial.table)
 ```
 
 # RECIDIVISM: PAM Cluster Analysis  
+ The final part of this project uses the RECIDIVISM dataset. The data consists of a random sample records on convicts released from prison during 1977/1978. I use this data set to conduct a k-means cluster analysis.
+ 
 The recidivism dataset is an 18 variable dataset with 1445 records.  The data is a random sample of convicts released from prison between July 1, 1977 and June 30, 1978. The information was collected retrospectively by looking at records in April 1984, so the maximum possible length of observation is 81 months. 
 
 ```{r}
