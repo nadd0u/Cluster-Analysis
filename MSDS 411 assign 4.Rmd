@@ -2,9 +2,8 @@
 title: 'Cluster Analysis'
 author: "Nadia Noui-Mehidi"
 date: "11/5/2019"
-output:
-  word_document: default
-  pdf_document: default
+output: rmarkdown::github_document
+
 ---
 
 ```{r setup, include=FALSE}
@@ -43,8 +42,7 @@ library(tidyr)
 ```
 
 
-In this project I perform an exploratory data analysis for three different clustering problems. 
-
+In this project I perform an exploratory data analysis on clustering problems. The project is divided into three sections, each focusing on a different dataset and cluster analysis technique. This project includes applications of hierarchical cluster analysis, k-means cluster analysis, the integration of principal components analysis and cluster analysis, and the application of cluster analysis as a predictive model.  
 
 
 # European Employment Data 
