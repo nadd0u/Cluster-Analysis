@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(wooldridge)
 data('recid')
 
+
 install.packages("rmarkdown")
 #states <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/USStates.csv",head=TRUE,sep=",")
 library(NbClust)
