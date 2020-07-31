@@ -9,9 +9,12 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-employment <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/EuropeanEmployment.csv",head=TRUE,sep=",")
-recidivism <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/recidivism.csv",head=TRUE,sep=",")
-states <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/USStates.csv",head=TRUE,sep=",")
+
+library(wooldridge)
+data('recid')
+
+
+#states <- read.csv(file="file:///Users/nadianoui-mehidi/Desktop/USStates.csv",head=TRUE,sep=",")
 library(NbClust)
 library(dplyr)
 library(skimr)
@@ -44,12 +47,25 @@ library(tidyr)
 # European Employment Data 
 The European Employment data are the percentage employed in different industries in Europe countries during 1979. We will be analyzing it to gain insight into patterns of employment (if any) amongst European countries. All of the 30 countries belong to one of three EU groups – EU for the European Union, EFTA for the European Free Trade Association, Eastern for the Eastern European nations and other. Other consists of four countries – Cyprus, Gibraltar, Malta and Turkey which we could think of as the Mediterranean region.
 
-```{r cars}
-print(employment)
+```{r}
+#"/Users/nadianoui-mehidi/Cluster-Analysis"
+#dir.create("raw_data")
+#file.copy("~/Documents/EuropeanEmployment.csv", "raw_data")
+
 ```
 
 
-##(1)	Initial Exploratory Data Analysis:  
+```{r cars}
+
+library(readr)
+employment <- read.csv("raw_data/EuropeanEmployment.csv")
+print(employment)
+
+
+```
+
+
+## Initial Exploratory Data Analysis:  
 When we have multivariate data, the scatterplot of each pair of variables can be used as the basis of an initial examination of the the data for informal evidence of cluster structure. Using the pairs plot below to scan the individual 2-dimensional views of the data we see that some industries move together. Agriculture has negative correlation with Service, Construction, and Manufacturing industries. Transport, manufacturing and construction are also correlated 
 
 ```{r}
@@ -59,7 +75,7 @@ pairs(employment[,-c(1,2)])
 ```
 
 
-##(2)	Visualizing the Data with Labelled Scatterplots:  
+## Visualizing the Data with Labelled Scatterplots:  
 While the pairs plot allows us to scan all pairwise scatterplots, it is not the ideal visualization of the data.  After we have honed in on some interesting dimensions we can create more specialized plots for those dimensions to see whether they reveal any clusters. 
 
 ### Scatterplot of Financial versus Service Industries.  
@@ -129,7 +145,7 @@ ggplot(pcdf2, aes(x=pc1, y=pc2, colour = employment$Group, label= employment$Cou
   theme(plot.title=element_text(lineheight=0.8, face="bold", hjust=0.5))
 ```
 
-##(4)	Hierarchical Clustering Analysis
+## Hierarchical Clustering Analysis
 
 In agglomerative hierarchical clustering, each observation starts as its own cluster. Clusters are then combined (two at a time) until all clusters are merged into a single cluster. Clusters are combined based on their proximity to one another; we will use Complete Linkage and Euclidian Distance to measure this proximity. Complete linkage clustering, measures the longest distance between a point in one cluster and a point in the other cluster. Because these variables all use the same units we do not standardize the data before calculating Euclidian distances and performing the complete linkage clustering. We visualize our hierarchic classifications using a dendrogram, which illustrates how items are combined into clusters. The dendogram helps us understand which countries are similar or different with regard to their Industry composition.
 
@@ -275,7 +291,7 @@ formattable(external.table)
 ```
 
 
-##(5)	k-Means Clustering Analysis  
+## K-Means Clustering Analysis  
 The k-means algorithm is another method to cluster data. This technique partitions the data set into unique homogeneous clusters whose observations are similar to each other but different than other clusters.
 
 ### K-Means Cluster Analysis where K=3
@@ -418,7 +434,7 @@ formattable(trial.table)
 
 
 
-## 6.	Optimal Number of Clusters  
+## Optimal Number of Clusters  
 
 There are a number of indices for determining the best number of clusters in a cluster analysis. Below are graphs showing the optimal solution using:
 
@@ -450,10 +466,15 @@ fviz_nbclust(e, kmeans, nstart = 25,  method = "gap_stat", nboot = 50)+
 ```
 
 
-# 7. USSTATES: Hierarchical Cluster Analysis
+#  USSTATES: Hierarchical Cluster Analysis
 The USSTATES dataset is a 12 variable dataset with 50 records representing the US States. Each row includes a group variable for region that we can use as our framework for understanding how states could be grouped. There are 2 continuous variables: population and household income. The remaining variables are state-wide average or proportion scores for various demographic  variables.  As such, higher scores for the composite variables translate into having more of that quality. 
 
 ```{r}
+file.copy("~/Documents/USStates.csv", "raw_data")
+
+states <- read.csv("raw_data/USStates.csv")
+
+
 print(states)
 ```
 
@@ -623,11 +644,11 @@ formattable(trial.table)
 
 ```
 
-# 8. RECIDIVISM: PAM Cluster Analysis  
+# RECIDIVISM: PAM Cluster Analysis  
 The recidivism dataset is an 18 variable dataset with 1445 records.  The data is a random sample of convicts released from prison between July 1, 1977 and June 30, 1978. The information was collected retrospectively by looking at records in April 1984, so the maximum possible length of observation is 81 months. 
 
 ```{r}
-head(recidivism)
+head(recid)
 ```
 
 The variables are a mix of binary variables and continuous variables. Since K-Means uses centroids (a vector of variable means) and Euclidean distance to measure proximity, it requires that all variables be continuous. Partitioning around medoids (PAM) unlike K-means can be based on any distance measure and can therefore accommodate mixed data types and isn’t limited to continuous variables. With PAM, rather than representing each cluster using a centroid, each cluster is identified by its most representative observation
@@ -635,7 +656,7 @@ The variables are a mix of binary variables and continuous variables. Since K-Me
 ### Distance Measure
 In order for a clustering algorithm to yield sensible results, we have to use a distance metric that can handle mixed data types. In this case, we will use something called Gower distance. For each variable type, the distance metric that works well for that type is used and scaled to fall between 0 and 1. Our quantitative variables use a range-normalized Manhattan distance. Our binary variables use a Dice coefficient.
 ```{r}
-r<-recidivism[,-c(18)]
+r<-recid[,-c(18)]
 dist <- daisy(r,
                     metric = "gower",
                     type = list(logratio = 3))
